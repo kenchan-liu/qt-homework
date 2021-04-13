@@ -4,6 +4,7 @@
 #include <QPixmap>
 #include "QCursor"
 #include <iostream>
+#include<QDebug>
 #include "QMouseEvent"
 #include <string>
 #include <vector>
@@ -25,7 +26,6 @@ othello::othello(QWidget *parent) :
     ui->setupUi(this);
     init();
     mainBoard=new Board();
-    mainBoard->init();
     resetBoard(mainBoard);
     turn="a";
     playera=Blackchess;
@@ -38,6 +38,8 @@ othello::othello(QWidget *parent) :
     background=background.scaled(QSize(400,400), Qt::KeepAspectRatio);
     black=black.scaled(QSize(50,50),Qt::KeepAspectRatio);
     white=white.scaled(QSize(50,50),Qt::KeepAspectRatio);
+    hintblack=hintblack.scaled(QSize(50,50),Qt::KeepAspectRatio);
+    hintwhite=hintwhite.scaled(QSize(50,50),Qt::KeepAspectRatio);
 }
 
 othello::~othello()
@@ -51,13 +53,26 @@ void othello::init(){
 }
 void othello::mousePressEvent(QMouseEvent *e){
     mousex=e->x()/50;
-    mousey=e->x()/50;
-    if(turn.compare("a")==0){
+    mousey=e->y()/50;
+    if(turn.compare("a")==0&&isGameOver(mainBoard)!=true&&!gameOver){
         if(makeMove(mainBoard,playera,mousex,mousey)==true){
+            makeMove(mainBoard,playera,mousex,mousey);
             Last.x=mousex;
             Last.y=mousey;
-            if(getValidMove(mainBoard,playerb).size()!=0){
+            if(getMove(mainBoard,playerb).size()!=0){
                 turn="b";
+            }
+        }
+        else{
+            cout<<"Reinput"<<endl;
+        }
+    }else{
+        if(makeMove(mainBoard,playerb,mousex,mousey)==true){
+            makeMove(mainBoard,playera,mousex,mousey);
+            Last.x=mousex;
+            Last.y=mousey;
+            if(getMove(mainBoard,playera).size()!=0){
+                turn="a";
             }
         }
         else{
@@ -72,7 +87,7 @@ void othello::paintEvent(QPaintEvent *event){
     painter.setRenderHint(QPainter::SmoothPixmapTransform,true);
     painter.drawPixmap(0,0,400,400,background);
     int c;
-    if(turn.compare("a")==0){
+    if(turn=="b"){
         c=Whitechess;
     }
     else{
@@ -84,7 +99,7 @@ void othello::paintEvent(QPaintEvent *event){
             potential[i][j]=0;
         }
     }
-   vector<posi> nodes =getValidMove(mainBoard,c);
+   vector<posi> nodes =getMove(mainBoard,c);
    for(int i=0;i<nodes.size();i++){
        int x=nodes[i].x;
        int y=nodes[i].y;
@@ -108,7 +123,7 @@ void othello::paintEvent(QPaintEvent *event){
    }
 }
 bool othello::makeMove(Board *mainboard, int playerTile, int col, int row){
-    vector<posi> tilesToFlip = isValidMove(mainboard, playerTile, col, row);
+    vector<posi> tilesToFlip = isValid(mainboard, playerTile, col, row);
 
         if (tilesToFlip.size()==0) {
             return false;
@@ -116,20 +131,19 @@ bool othello::makeMove(Board *mainboard, int playerTile, int col, int row){
 
         mainboard->set(col, row, playerTile);
 
-        while (tilesToFlip.size()) {
+        while (tilesToFlip.size()!=0) {
             posi tilepos = tilesToFlip.back();
             tilesToFlip.pop_back();
             mainboard->set(tilepos.x, tilepos.y, playerTile);
         }
-
+        repaint();
         return true;
 }
-vector<posi> othello::isValidMove(Board *board, int tile, int col, int row){
+vector<posi> othello::isValid(Board *board, int tile, int col, int row){
     vector<posi> tilesToFlip;
         if (isOnBoard(col, row) == false || board->get(col, row) != 0) {
             return tilesToFlip;
         }
-
         int othertile;
         board->set(col, row, tile);
 
@@ -183,27 +197,15 @@ vector<posi> othello::isValidMove(Board *board, int tile, int col, int row){
         board->set(col, row, 0);
         return tilesToFlip;
 }
-vector<posi> othello::getValidMove(Board *board, int tile){
+vector<posi> othello::getMove(Board *board, int tile){
     vector<posi> validMoves;
         for (int i = 0; i < 8; i++) {
-            for (int j = 0; j < 8; j++) {
-                if (isValidMove(board, tile, i, j).size() != 0) {
-                        if ( i == 0 || i == 7 || j == 0 || j == 7){
-                            validMoves.push_back(posi(i, j));
-                            validMoves.push_back(posi(i, j));
-                        }
-                        if ((i == 0 && j == 0) || (i == 0 && j == 7) || (i == 7 && j == 0) || (i == 7 && j == 7)) {
-                            validMoves.push_back(posi(i, j));
-                            validMoves.push_back(posi(i, j));
-                        }
-                        if (!((i == 1 || i == 6) && (j == 1 || j == 6))) {
-                            validMoves.push_back(posi(i, j));
-
-                        }
-                    }
+            for (int j = 0; j < 8; j++){
+                 if (isValid(board, tile, i, j).size() != 0) {
                     validMoves.push_back(posi(i, j));
-                }
+                 }
             }
+        }
         return validMoves;
 }
 bool othello::isOnBoard(int x, int y){

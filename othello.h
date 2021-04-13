@@ -10,6 +10,7 @@
 #include"QButtonGroup"
 #include<QPixmap>
 #include<QPaintEvent>
+#include "widget.h"
 using namespace std;
 #define Whitechess  1
 #define Blackchess  2
@@ -54,11 +55,10 @@ class othello : public QMainWindow
     bool gameOver = false;
     int playera, playerb;
     int playert,computert;
-    QMutex mutex;
     string turn;
     posi Last;
     int Direction[8][2] = {
-        {0,1},{ 1,1 },{ 1,0 },{ 1,-1 },{ 0,-1 },{ -1,-1 },{ -1,0 },{-1,1}
+        {0,1},{1,1},{1,0},{1,-1},{0,-1},{-1,-1},{-1,0},{-1,1}
     };
     QButtonGroup *btnGroup;  
     QPixmap background,white,black,hintwhite,hintblack;
@@ -71,8 +71,8 @@ public:
     Board* getBoardCopy(Board* board);
     void resetBoard(Board* board);
     bool makeMove(Board* mainboard, int playerTile, int col, int row);
-    vector<posi> isValidMove(Board* board, int tile, int xstart, int ystart);
-    vector<posi> getValidMove(Board* board, int tile);
+    vector<posi> isValid(Board* board, int tile, int xstart, int ystart);
+    vector<posi> getMove(Board* board, int tile);
     bool isOnBoard(int x, int y);
     bool isOnCorner(int x,int y);
     void printBoard(Board* board);
