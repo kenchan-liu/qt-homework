@@ -14,6 +14,8 @@
 #include <stack>
 #include<QSize>
 #include <conio.h>
+#include<QMessageBox>
+#include<math.h>
 using namespace std;
 bool mousedown = false;
 int mousex;
@@ -25,11 +27,24 @@ othello::othello(QWidget *parent) :
 {
     ui->setupUi(this);
     init();
+    mode=1;
     mainBoard=new Board();
     resetBoard(mainBoard);
     turn="a";
     playera=Blackchess;
     playerb=Whitechess;
+    playert=Blackchess;
+    computert=Whitechess;
+    nom=true;
+    QString a;
+    a= ui->lineEdit->text();
+    hard=a.toInt();
+    isGameStart=false;
+    groupButton1=new QButtonGroup(this);
+    groupButton1->addButton(ui->aim,0);
+    groupButton1->addButton(ui->hmm,1);
+    ui->hmm->setChecked(true); //默认human_mode
+    connect(ui->pushButton, SIGNAL(clicked()),this,SLOT(ClickButton()));
     background.load("C:/Users/kentl/Documents/build-Othello-Desktop_Qt_5_9_6_MinGW_32bit-Debug/debug/images/1.jpg");
     black.load("G:/noir.png");
     white.load("G:/blanc.png");
@@ -41,7 +56,34 @@ othello::othello(QWidget *parent) :
     hintblack=hintblack.scaled(QSize(50,50),Qt::KeepAspectRatio);
     hintwhite=hintwhite.scaled(QSize(50,50),Qt::KeepAspectRatio);
 }
-
+void othello::on_pushButton_clicked(){
+    if(isGameStart==false){
+        QMessageBox msgBox;
+        msgBox.setText("www.baidu.com");
+        msgBox.exec();
+        ui->pushButton->setText("Reset");
+        turn="a";
+        switch(groupButton1->checkedId())
+        {
+        case 0:
+            mode=-1;
+            break;
+        case 1:
+            mode=1;
+            break;
+        }
+        isGameStart=true;
+        resetBoard(mainBoard);
+        repaint();
+    }
+    else{
+        resetBoard(mainBoard);
+        turn="a";
+        isGameStart=false;
+        repaint();
+        ui->pushButton->setText("Start");
+    }
+}
 othello::~othello()
 {
     delete ui;
@@ -52,34 +94,57 @@ void othello::init(){
 
 }
 void othello::mousePressEvent(QMouseEvent *e){
-    mousex=e->x()/50;
-    mousey=e->y()/50;
-    if(turn.compare("a")==0&&isGameOver(mainBoard)!=true&&!gameOver){
-        if(makeMove(mainBoard,playera,mousex,mousey)==true){
-            makeMove(mainBoard,playera,mousex,mousey);
-            Last.x=mousex;
-            Last.y=mousey;
-            if(getMove(mainBoard,playerb).size()!=0){
-                turn="b";
+    if(mode==1){
+        mousex=e->x()/50;
+        mousey=e->y()/50;
+        if(turn.compare("a")==0&&isGameOver(mainBoard)!=true&&!gameOver){
+            if(makeMove(mainBoard,playera,mousex,mousey)==true){
+                Last.x=mousex;
+                Last.y=mousey;
+                if(getMove(mainBoard,playerb).size()!=0){
+                    turn="b";
+                }
+            }
+            else{
+                cout<<"Reinput"<<endl;
+            }
+        }else{
+            if(makeMove(mainBoard,playerb,mousex,mousey)==true){
+                Last.x=mousex;
+                Last.y=mousey;
+                if(getMove(mainBoard,playera).size()!=0){
+                    turn="a";
+                }
+            }
+            else{
+                cout<<"Reinput"<<endl;
             }
         }
-        else{
-            cout<<"Reinput"<<endl;
+        repaint();
+    }
+    else{
+        mousex=e->x()/50;
+        mousey=e->y()/50;
+        if(turn.compare("a")==0&&isGameOver(mainBoard)!=true&&!gameOver){
+            if(makeMove(mainBoard,playert,mousex,mousey)==true){
+                makeMove(mainBoard,playert,mousex,mousey);
+                Last.x=mousex;
+                Last.y=mousey;
+                if(getMove(mainBoard,computert).size()!=0){
+                    turn="b";
+                }
+            }
+            repaint();
         }
-    }else{
-        if(makeMove(mainBoard,playerb,mousex,mousey)==true){
-            makeMove(mainBoard,playera,mousex,mousey);
-            Last.x=mousex;
-            Last.y=mousey;
-            if(getMove(mainBoard,playera).size()!=0){
+        posi p;
+        p=min(mainBoard,3,-9999,9999,Whitechess,hard);
+        if(makeMove(mainBoard,computert,p.x,p.y)==true){
+            if(getMove(mainBoard,playert).size()!=0){
                 turn="a";
             }
         }
-        else{
-            cout<<"Reinput"<<endl;
-        }
+        repaint();
     }
-    repaint();
 }
 void othello::paintEvent(QPaintEvent *event){
     this->resize(600,400);
@@ -98,6 +163,15 @@ void othello::paintEvent(QPaintEvent *event){
         for(int j=0;j<8;j++){
             potential[i][j]=0;
         }
+    }
+    if(isGameOver(mainBoard)&&nom){
+        QMessageBox msgBox;
+        if(report(mainBoard,Whitechess)>report(mainBoard,Blackchess))
+            msgBox.setText("white win.");
+        else
+            msgBox.setText("black win.");
+        msgBox.exec();
+        nom=false;
     }
    vector<posi> nodes =getMove(mainBoard,c);
    for(int i=0;i<nodes.size();i++){
@@ -153,8 +227,6 @@ vector<posi> othello::isValid(Board *board, int tile, int col, int row){
         else {
             othertile = Blackchess;
         }
-
-
         for (int i = 0; i < 8; i++) {
             int x = col;
             int y = row;
@@ -168,7 +240,6 @@ vector<posi> othello::isValid(Board *board, int tile, int col, int row){
                 if (isOnBoard(x, y) == false) {
                     continue;
                 }
-
                 while (board->get(x, y) == othertile) {
                     x += xdirection;
                     y += ydirection;
@@ -176,16 +247,13 @@ vector<posi> othello::isValid(Board *board, int tile, int col, int row){
                         break;
                     }
                 }
-
                 if (isOnBoard(x, y) == false) {
                     continue;
                 }
-
                 if (board->get(x, y) == tile) {
                     while (true) {
                         x -= xdirection;
                         y -= ydirection;
-
                         if (x == col && y == row) {
                             break;
                         }
@@ -242,6 +310,24 @@ bool othello::isGameOver(Board* board) {
 
     return true;
 }
+int othello::report(Board *b,int t){
+    int black=0,white=0;
+    for(int i=0;i<8;i++){
+        for(int j=0;j<8;j++){
+            if (b->get(i, j) == Blackchess) {
+                black++;
+            }
+            else if (b->get(i, j) == Whitechess) {
+                white++;
+            }
+        }
+    }
+    if(t==Whitechess){
+        return white;
+    }
+    else
+        return black;
+}
 void othello::resetBoard(Board *board){
     board->init();
     board->set(3,3,Whitechess);
@@ -249,9 +335,204 @@ void othello::resetBoard(Board *board){
     board->set(4,3,Blackchess);
     board->set(4,4,Whitechess);
 }
-void othello::on_pushButton_clicked()
-{
-    isGameStart=true;
-    resetBoard(mainBoard);
-    turn="a";
+posi othello::max(Board *mb, int depth, int alpha, int beta, int tile,int hard){
+    int best = -10000;
+    Board *nm=new Board();
+    posi move ;
+    for(int i=0;i<8;i++){
+        for(int j=0;j<8;j++){
+            nm->set(i,j,mb->get(i,j));
+        }
+    }
+    vector<posi> gm=getMove(mb,tile);
+    if(depth==0){
+        for(int i=0;i<getMove(mb,tile).size();i++){
+            nm->set(gm[i].x,gm[i].y,tile);
+            if(evaluate(nm,hard)>best){
+                best=evaluate(nm,hard);move=gm[i];
+            }
+            nm->set(gm[i].x,gm[i].y,0);
+        }
+        return move;
+    }
+    if(gm.size()==0){
+        return move;
+    }
+    for (int i = 0; i < getMove(mb,tile).size(); i++) {
+        alpha = best>alpha?best:alpha;
+        if(alpha >= beta){
+            break;
+        }
+        nm->set(gm[i].x,gm[i].y,tile);
+        posi next;
+        next=min(nm, depth - 1,alpha, beta, -tile, hard);
+        nm->set(next.x,next.y,-tile);
+        int value = evaluate(nm,hard);
+        if (value < best) {
+          best = value;
+          move = gm[i];
+        }
+        nm->set(next.x,next.y,0);
+        nm->set(gm[i].x, gm[i].y,0);
+      }
+      return move;
+}
+posi othello::min(Board *mb, int depth, int alpha, int beta, int tile,int hard){
+    int best = 10000;
+    Board *nm=new Board();
+    posi move ;
+    for(int i=0;i<8;i++){
+        for(int j=0;j<8;j++){
+            nm->set(i,j,mb->get(i,j));
+        }
+    }
+    vector<posi> gm=getMove(mb,tile);
+    if(depth==0){
+        for(int i=0;i<getMove(mb,tile).size();i++){
+            nm->set(gm[i].x,gm[i].y,tile);
+            if(evaluate(nm,hard)<best){
+                best=evaluate(nm,hard);move=gm[i];
+            }
+            nm->set(gm[i].x,gm[i].y,0);
+        }
+        return move;
+    }
+    for (int i = 0; i < getMove(mb,tile).size(); i++) {
+        beta = best<beta?best:beta;
+        if(alpha >= beta){
+            break;
+        }
+        posi next;
+        next=max(nm, depth - 1,alpha, beta, -tile, hard);
+        nm->set(gm[i].x,gm[i].y,tile);
+        nm->set(next.x,next.y,-tile);
+        int value = evaluate(nm,hard);
+        if (value < best) {
+          best = value;
+          move = gm[i];
+        }
+        nm->set(next.x,next.y,0);
+        nm->set(gm[i].x, gm[i].y,0);
+      }
+      return move;
+}
+int othello::evaluate(Board *board, int hard) {
+    int whiteEvaluate = 0;
+    int blackEvaluate = 0;
+    vector<posi>b,w;
+    int sw,sb;
+    int weight[5] = { 2, 4, 6, 10, 15 };
+    switch (hard) {
+    case 1:
+      for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+          if (board->get(i,j) == Whitechess) {
+            whiteEvaluate += 1;
+          } else if (board->get(i,j) == Blackchess) {
+            blackEvaluate += 1;
+          }
+        }
+      }
+      break;
+    case 2:
+    case 3:
+    case 4:
+      for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+          if ((i == 0 || i == 7) && (j == 0 || j == 7)) {
+            if (board->get(i,j) == Whitechess) {
+              whiteEvaluate += 5;
+            } else if (board->get(i,j) == Blackchess) {
+              blackEvaluate += 5;
+            }
+          } else if (i == 0 || i == 7 || j == 0 || j == 7) {
+            if (board->get(i,j) == Whitechess) {
+              whiteEvaluate += 2;
+            } else if (board->get(i,j) == Blackchess) {
+              blackEvaluate += 2;
+            }
+          } else {
+            if (board->get(i,j) == Whitechess) {
+              whiteEvaluate += 1;
+            } else if (board->get(i,j) == Blackchess) {
+              blackEvaluate += 1;
+            }
+          }
+        }
+      }
+      break;
+    case 5:
+    case 6:
+      for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+          if ((i == 0 || i == 7) && (j == 0 || j == 7)) {
+            if (board->get(i,j) == Whitechess) {
+              whiteEvaluate += 5;
+            } else if (board->get(i,j) == Blackchess) {
+              blackEvaluate += 5;
+            }
+          } else if (i == 0 || i == 7 || j == 0 || j == 7) {
+            if (board->get(i,j) == Whitechess) {
+              whiteEvaluate += 2;
+            } else if (board->get(i,j) == Blackchess) {
+              blackEvaluate += 2;
+            }
+          } else {
+            if (board->get(i,j) == Whitechess) {
+              whiteEvaluate += 1;
+            } else if (board->get(i,j) == Blackchess) {
+              blackEvaluate += 1;
+            }
+          }
+        }
+      }
+      b=getMove(board,Blackchess);
+      w=getMove(board,Whitechess);
+      blackEvaluate = blackEvaluate * 2 + b.size();
+      whiteEvaluate = whiteEvaluate * 2 + w.size();
+      break;
+    case 7:
+      for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j++) {
+          if (board->get(i,j) == Whitechess) {
+            whiteEvaluate = whiteEvaluate + weight[getStability(board,posi(i, j))];
+          } else if (board->get(i,j) == Blackchess) {
+            blackEvaluate = blackEvaluate + weight[getStability(board, posi(i, j))];
+          }
+        }
+      }
+      b=getMove(board,Blackchess);
+      w=getMove(board, Whitechess);
+      sb=b.size();
+      sw=w.size();
+      blackEvaluate += sb;
+      whiteEvaluate += sw;
+      break;
+    }
+    return blackEvaluate - whiteEvaluate;
+}
+int othello::getStability(Board *b, posi p) {
+    int chessColor = b->get(p.x,p.y);
+    int drow[4][2]={ { 0, 0 }, { -1, 1 }, { -1, 1 }, { 1, -1 } }, dcol[4][2]={ { -1, 1 }, { 0, 0 }, { -1, 1 }, { -1, 1 } };
+    int row[2],col[2];
+    int degree = 0;
+    for (int k = 0; k < 4; k++) {
+        row[0] = row[1] = p.x;
+        col[0] = col[1] = p.y;
+        for (int i = 0; i < 2; i++) {
+          while (isOnBoard(row[i] + drow[k][i], col[i] + dcol[k][i])
+              && b->get(row[i] + drow[k][i],col[i] + dcol[k][i]) == chessColor) {
+            row[i] += drow[k][i];
+            col[i] += dcol[k][i];
+          }
+        }
+        if (!isOnBoard(row[0] + drow[k][0], col[0] + dcol[k][0])
+            || !isOnBoard(row[1] + drow[k][1], col[1] + dcol[k][1])) {
+          degree += 1;
+        } else if (b->get(row[0] + drow[k][0],col[0] + dcol[k][0]) == (-chessColor)
+            && b->get(row[1] + drow[k][1],col[1] + dcol[k][1]) == (-chessColor)) {
+          degree += 1;
+        }
+      }
+    return degree;
 }

@@ -10,10 +10,9 @@
 #include"QButtonGroup"
 #include<QPixmap>
 #include<QPaintEvent>
-#include "widget.h"
 using namespace std;
-#define Whitechess  1
-#define Blackchess  2
+#define Whitechess  -1
+#define Blackchess  1
 typedef struct posnode {
     int x;
     int y;
@@ -53,8 +52,11 @@ class othello : public QMainWindow
 {
     Q_OBJECT
     bool gameOver = false;
+    bool nom;
+    int hard;
     int playera, playerb;
     int playert,computert;
+    int mode;
     string turn;
     posi Last;
     int Direction[8][2] = {
@@ -77,11 +79,17 @@ public:
     bool isOnCorner(int x,int y);
     void printBoard(Board* board);
     bool isGameOver(Board* board);
+    posi min(Board *mb,int depth,int alpha, int beta, int tile, int hard);
+    posi max(Board *mb,int depth,int alpha,int beta, int tile,int hard);
+    int evaluate(Board *board,int hard);
+    int getStability(Board *b,posi p);
     void start();
+    int report(Board *b,int t);
     ~othello();
 
 private:
     Ui::othello *ui;
+    QButtonGroup *groupButton1;
 protected:
     void paintEvent(QPaintEvent *event);
     void mousePressEvent(QMouseEvent *e); 
