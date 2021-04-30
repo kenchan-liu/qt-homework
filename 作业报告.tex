@@ -1,0 +1,280 @@
+\documentclass[UTF8]{ctexart}
+\usepackage{listings}
+\usepackage{xcolor}
+\title{c++程序设计报告}
+\author{计算机学院：刘健琛}
+\date{\today}
+\begin{document}
+\maketitle
+\tableofcontents
+\section{作业题目}
+用qt实现黑白棋游戏。
+\section{开发环境}
+\begin{itemize}
+    \item qt creator 4.6.2
+\end{itemize}
+\begin{itemize}
+    \item MINGW 5.3.0 32bit
+\end{itemize}
+
+\section{实现功能}
+\begin{itemize}
+    \item 8×8的棋盘与黑白棋子基本实现。
+\end{itemize}
+\begin{itemize}
+    \item 黑白棋游戏规则与胜负判断函数的实现。
+\end{itemize}
+\begin{itemize}
+    \item 两人单机对战，左右互搏的下棋方法实现。
+\end{itemize}
+\begin{itemize}
+    \item 基于minimax剪枝算法的人工智能对弈方法实现。
+\end{itemize}
+\begin{itemize}
+    \item qmessagebox的弹出窗口介绍。
+\end{itemize}
+\section{游戏规则}
+\begin{itemize}
+    \item 棋局开始时黑棋位于e4和d5，白棋位于d4和e5。
+
+\end{itemize}
+\begin{itemize}
+    \item 黑方先行，双方交替下棋。
+\end{itemize}
+\begin{itemize}
+    \item 一步合法的棋步包括：在一个空格新落下一个棋子，并且翻转对手一个或多个棋子。
+\end{itemize}
+\begin{itemize}
+    \item 新落下的棋子与棋盘上已有的同色棋子间，对方被夹住的所有棋子都要翻转过来。可以是横着夹，竖着夹，或是斜着夹。夹住的位置上必须全部是对手的棋子，不能有空格。
+\end{itemize}
+\begin{itemize}
+    \item 一步棋可以在数个方向上翻棋，任何被夹住的棋子都必须被翻转过来，棋手无权选择不去翻某个棋子。
+\end{itemize}
+\begin{itemize}
+    \item 除非至少翻转了对手的一个棋子，否则就不能落子。如果一方没有合法棋步，也就是说不管他下到哪里，都不能至少翻转对手的一个棋子，那他这一轮只能弃权，而由他的对手继续落子直到他有合法棋步可下。
+\end{itemize}
+\begin{itemize}
+    \item 如果一方至少有一步合法棋步可下，他就必须落子，不得弃权。
+\end{itemize}
+\begin{itemize}
+    \item 棋局持续下去，直到棋盘填满或者双方都无合法棋步可下。
+\end{itemize}
+以上游戏规则同时被写在我的个人主页上，点击游戏中的开始按钮后会跳出窗口跳转到我的个人主页。
+
+
+\section{基本程序代码的实现}
+\subsection{画棋盘}
+    \begin{lstlisting}[language={[ANSI]C},numbers=left,numberstyle=\tiny,%frame=shadowbox,  
+       rulesepcolor=\color{red!20!green!20!blue!20},  
+       keywordstyle=\color{blue!70!black},  
+       commentstyle=\color{blue!90!},  
+       basicstyle=\ttfamily]  
+    
+       void othello::paintEvent(QPaintEvent *event){
+        this->resize(600,400);
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::SmoothPixmapTransform,true);
+        painter.drawPixmap(0,0,400,400,background);
+        int c;
+        if(turn=="b"){
+            c=Whitechess;
+        }
+        else{
+            c=Blackchess;
+        }
+        int potential[8][8];
+        for(int i=0;i<8;i++){
+            for(int j=0;j<8;j++){
+                potential[i][j]=0;
+            }
+        }
+        if(isGameOver(mainBoard)&&nom){
+            QMessageBox msgBox;
+            if(report(mainBoard,Whitechess)>report(mainBoard,Blackchess))
+                msgBox.setText("white win.");
+            else
+                msgBox.setText("black win.");
+            msgBox.exec();
+            nom=false;
+        }
+       vector<posi> nodes =getMove(mainBoard,c);
+       for(int i=0;i<nodes.size();i++){
+           int x=nodes[i].x;
+           int y=nodes[i].y;
+           potential[x][y]=c;
+       }
+       for(int i=0;i<8;i++){
+           for(int j=0;j<8;j++){
+               if(mainBoard->get(i,j)==Whitechess){
+                   painter.drawPixmap(0+50*i,0+50*j,50,50,white);
+               }
+               else if(mainBoard->get(i,j)==Blackchess){
+                   painter.drawPixmap(0+50*i,0+50*j,50,50,black);
+               }
+               if(potential[i][j]==Blackchess){
+                   painter.drawPixmap(0+50*i,0+50*j,50,50,hintblack);
+               }
+               if(potential[i][j]==Whitechess){
+                   painter.drawPixmap(0+50*i,0+50*j,50,50,hintwhite);
+               }
+           }
+       }
+    }
+    \end{lstlisting} 
+通过一个有8×8的数组的棋盘类来存储当前棋盘上的棋子，用下载好的棋盘图片和自己画的棋子图片通过
+pixmap来展示出来。这里可走棋子用圆圈来表示，已走的棋子用黑白实心棋子表现。
+\subsection{鼠标点击实现下棋}
+    \begin{lstlisting}[language={[ANSI]C},numbers=left,numberstyle=\tiny,%frame=shadowbox,  
+    rulesepcolor=\color{red!20!green!20!blue!20},  
+    keywordstyle=\color{blue!70!black},  
+    commentstyle=\color{blue!90!},  
+    basicstyle=\ttfamily]  
+    mousex=e->x()/50;
+        mousey=e->y()/50;
+        if(turn.compare("a")==0&&isGameOver(mainBoard)!=true&&!gameOver){
+            if(makeMove(mainBoard,playera,mousex,mousey)==true){
+                Last.x=mousex;
+                Last.y=mousey;
+                if(getMove(mainBoard,playerb).size()!=0){
+                    turn="b";
+                }
+            }
+        \end{lstlisting} 
+\subsection{可走棋子判定函数}
+\begin{lstlisting}[language={[ANSI]C},numbers=left,numberstyle=\tiny,%frame=shadowbox,  
+    rulesepcolor=\color{red!20!green!20!blue!20},  
+    keywordstyle=\color{blue!70!black},  
+    commentstyle=\color{blue!90!},  
+    basicstyle=\ttfamily]  
+vector<posi> othello::isValid(Board *board, int tile, int col, int row){
+    vector<posi> tilesToFlip;
+        if (isOnBoard(col, row) == false || board->get(col, row) != 0) {
+            return tilesToFlip;
+        }
+        int othertile;
+        board->set(col, row, tile);
+
+        if (tile == Blackchess) {
+            othertile = Whitechess;
+        }
+        else {
+            othertile = Blackchess;
+        }
+        for (int i = 0; i < 8; i++) {
+            int x = col;
+            int y = row;
+            int xdirection = Direction[i][0];
+            int ydirection = Direction[i][1];
+            x += xdirection;
+            y += ydirection;
+            if (isOnBoard(x, y) && board->get(x, y) == othertile) {
+                x += xdirection;
+                y += ydirection;
+                if (isOnBoard(x, y) == false) {
+                    continue;
+                }
+                while (board->get(x, y) == othertile) {
+                    x += xdirection;
+                    y += ydirection;
+                    if (isOnBoard(x, y) == false) {
+                        break;
+                    }
+                }
+                if (isOnBoard(x, y) == false) {
+                    continue;
+                }
+                if (board->get(x, y) == tile) {
+                    while (true) {
+                        x -= xdirection;
+                        y -= ydirection;
+                        if (x == col && y == row) {
+                            break;
+                        }
+                        tilesToFlip.push_back(posi(x, y));
+                    }
+                }
+            }
+        }
+        board->set(col, row, 0);
+        return tilesToFlip;
+}
+\end{lstlisting} 
+通过规则已知这里只有能够将对方棋子反转的下法才可以落子，那么我们就通过向八个方向遍历
+看能否用两个同色棋子将对方连续棋子夹住。
+\subsection{minimax方法}
+\begin{lstlisting}[language={[ANSI]C},numbers=left,numberstyle=\tiny,%frame=shadowbox,  
+    rulesepcolor=\color{red!20!green!20!blue!20},  
+    keywordstyle=\color{blue!70!black},  
+    commentstyle=\color{blue!90!},  
+    basicstyle=\ttfamily]  
+posi othello::max(Board *mb, int depth, int alpha, int beta, int tile,int hard){
+    int best = -10000;
+    Board *nm=new Board();
+    posi move ;
+    for(int i=0;i<8;i++){
+        for(int j=0;j<8;j++){
+            nm->set(i,j,mb->get(i,j));
+        }
+    }
+    vector<posi> gm=getMove(mb,tile);
+    if(depth==0){
+        for(int i=0;i<getMove(mb,tile).size();i++){
+            nm->set(gm[i].x,gm[i].y,tile);
+            if(evaluate(nm,hard)>best){
+                best=evaluate(nm,hard);move=gm[i];
+            }
+            nm->set(gm[i].x,gm[i].y,0);
+        }
+        return move;
+    }
+    if(gm.size()==0){
+        return move;
+    }
+    for (int i = 0; i < getMove(mb,tile).size(); i++) {
+        alpha = best>alpha?best:alpha;
+        if(alpha >= beta){
+            break;
+        }
+        nm->set(gm[i].x,gm[i].y,tile);
+        posi next;
+        next=min(nm, depth - 1,alpha, beta, -tile, hard);
+        nm->set(next.x,next.y,-tile);
+        int value = evaluate(nm,hard);
+        if (value < best) {
+          best = value;
+          move = gm[i];
+        }
+        nm->set(next.x,next.y,0);
+        nm->set(gm[i].x, gm[i].y,0);
+      }
+      return move;
+}
+\end{lstlisting}
+
+
+minimax方法有min函数和max函数，对当前局面进行评估，这里截取max函数，该函数的逻辑是要让落子之后，对方的min取值
+只能最大。而min函数同理，通过两边对抗搜索，来寻找对各自最好的情况。搜索多层就可以得到期望的更优选择。
+
+这里的评估函数用一个8×8的矩阵加权算得，在这里黑棋的赋值是1，白棋的赋值是-1（由此一来黑棋用max求优，白棋用min）。
+
+而难度可以由搜索层数和评估矩阵的合理性来决定。
+\section{游戏说明}
+
+
+在开始玩之前在qbuttongroup中选择是ai模式还是人人模式，可以在lineedit中输入难度，
+然后点击start按钮，跳出窗口介绍规则。此时start按钮变成reset按钮，再按它就会恢复棋盘。
+
+这之后就可以开始下了，如果是人人模式，可以找一个同学一起下。你在棋盘上选择一个被黑/白圆圈圈出来的棋盘
+格子点击就可以落子了（如果没有圈圈代表你这一轮没得走），然后可以请你的同学来接着下另一颜色的棋子。
+双方轮流下直到游戏结束。
+
+如果是人机模式，你默认了先下的黑棋。在你点击完黑棋之后，电脑会自动下出白棋的落子，
+两方互相下棋，直到游戏结束。
+\section{收获}
+
+通过此次作业，了解了qt中的各个控件和使用方法，比如lineedit，qmessagebox，qlabel，qpixmap等。
+
+
+同时，对minimax对抗搜索方法有了一定的了解，在此前的作业中了解了蒙特卡洛树搜索，这次作业
+对ai的对抗搜索有了更深的理解。
+\end{document}
